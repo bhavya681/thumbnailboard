@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Thumbnail Board</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --background-dark: #121212;
+            --foreground-dark: #ffffff;
+            --card-background-dark: #1e1e1e;
+            --background-light: #ffffff;
+            --foreground-light: #121212;
+            --card-background-light: #f5f5f5;
+            --accent: #ff0000;
+            --accent-light: #757575;
+            --button-hover-light: #616161;
+            --sidebar-light: #F5F5F5;
+            --card-shadow-light: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Rest of the CSS remains exactly the same as previous version, just with updated color variables */
+        /* The styling behavior will now use the gray colors defined above instead of blue */
+        /* No other changes needed to the CSS or HTML structure */
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: var(--background-dark);
+            color: var(--foreground-dark);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .light-mode {
+            background-color: var(--background-light);
+            color: var(--foreground-light);
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: var(--card-background-dark);
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            transition: transform 0.3s ease-in-out;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .light-mode .sidebar {
+            background-color: var(--sidebar-light);
+            box-shadow: 2px 0 5px var(--card-shadow-light);
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+
+        .toggle-sidebar {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px;
+            cursor: pointer;
+            z-index: 101;
+        }
+
+        .light-mode .toggle-sidebar {
+            background-color: var(--accent-light);
+            box-shadow: 0 2px 5px var(--card-shadow-light);
+        }
+
+        .light-mode .toggle-sidebar:hover {
+            background-color: var(--button-hover-light);
+        }
+
+        .sidebar h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .board-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .board-list li {
+            background-color: var(--background-dark);
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+
+        .board-actions {
+            position: absolute;
+            right: 10px;
+            display: none;
+            gap: 5px;
+        }
+
+        .board-list li:hover .board-actions {
+            display: flex;
+        }
+
+        .board-actions button {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            background: var(--accent);
+            color: white;
+            font-size: 14px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .light-mode .board-actions button {
+            background: var(--accent-light);
+        }
+
+        .light-mode .board-actions button:hover {
+            background: var(--button-hover-light);
+        }
+
+        .light-mode .board-list li {
+            background-color: white;
+            border: 1px solid #E0E0E0;
+        }
+
+        .board-list li:hover {
+            transform: translateX(5px);
+            background-color: var(--accent);
+            color: var(--foreground-dark);
+        }
+
+        .light-mode .board-list li:hover {
+            background-color: var(--accent-light);
+            color: white;
+            border-color: var(--accent-light);
+        }
+
+        .add-board-btn {
+            margin-top: 0px;
+            padding: 10px;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            transition: background-color 0.3s;
+        }
+
+        .light-mode .add-board-btn {
+            background-color: var(--accent-light);
+            box-shadow: 0 2px 5px var(--card-shadow-light);
+        }
+
+        .light-mode .add-board-btn:hover {
+            background-color: var(--button-hover-light);
+        }
+
+        .main-content {
+            flex-grow: 1;
+            padding: 20px;
+            margin-left: 250px;
+            transition: margin-left 0.3s ease-in-out;
+        }
+
+        .main-content.full-width {
+            margin-left: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        #thumbnailUrl, #thumbnailNote {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid var(--foreground-dark);
+            border-radius: 4px;
+            min-width: 200px;
+        }
+
+        .light-mode #thumbnailUrl, .light-mode #thumbnailNote {
+            border: 1px solid #E0E0E0;
+            background-color: white;
+        }
+
+        #addThumbnail {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .light-mode #addThumbnail {
+            background-color: var(--accent-light);
+            box-shadow: 0 2px 5px var(--card-shadow-light);
+        }
+
+        .light-mode #addThumbnail:hover {
+            background-color: var(--button-hover-light);
+        }
+
+        .thumbnail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .thumbnail {
+            background-color: var(--card-background-dark);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .light-mode .thumbnail {
+            background-color: white;
+            box-shadow: 0 4px 6px var(--card-shadow-light);
+            border: 1px solid #E0E0E0;
+        }
+
+        .thumbnail:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .light-mode .thumbnail:hover {
+            box-shadow: 0 10px 20px var(--card-shadow-light);
+        }
+
+        .thumbnail img {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .thumbnail:hover img {
+            transform: scale(1.1);
+        }
+
+        .note-popup {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            text-align: center;
+            font-size: 14px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .light-mode .note-popup {
+            background: rgba(117, 117, 117, 0.9);
+        }
+
+        .thumbnail:hover .note-popup {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255, 0, 0, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            z-index: 2;
+        }
+
+        .light-mode .delete-btn {
+            background-color: var(--accent-light);
+        }
+
+        .thumbnail:hover .delete-btn {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .delete-btn:hover {
+            background-color: rgba(255, 0, 0, 1);
+            transform: scale(1.1);
+        }
+
+        .light-mode .delete-btn:hover {
+            background-color: var(--button-hover-light);
+        }
+
+        .toggle-mode {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 99;
+        }
+
+        .light-mode .toggle-mode {
+            background-color: var(--accent-light);
+            box-shadow: 0 2px 5px var(--card-shadow-light);
+        }
+
+        .light-mode .toggle-mode:hover {
+            background-color: var(--button-hover-light);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: var(--card-background-dark);
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+        }
+
+        .light-mode .modal-content {
+            background-color: white;
+            box-shadow: 0 4px 6px var(--card-shadow-light);
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid var(--foreground-dark);
+            border-radius: 4px;
+        }
+
+        .light-mode .modal input {
+            border: 1px solid #E0E0E0;
+        }
+
+        .modal button {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .light-mode .modal button {
+            background-color: var(--accent-light);
+        }
+
+        .light-mode .modal button:hover {
+            background-color: var(--button-hover-light);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 200px;
+            }
+            .main-content {
+                margin-left: 200px;
+            }
+            .input-container {
+                flex-direction: column;
+            }
+            #thumbnailUrl, #thumbnailNote, #addThumbnail {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .sidebar {
+                width: 100%;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .thumbnail-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="toggle-sidebar">☰</button>
+    <button class="toggle-mode">🌙</button>
+    <div class="sidebar">
+        <h2>Thumbnail Boards</h2>
+        <ul class="board-list" id="boardList">
+            <!-- Boards will be dynamically added here -->
+        </ul>
+        <button class="add-board-btn">Add New Board</button>
+    </div>
+    <div class="main-content">
+        <div class="container">
+            <h1>Add a board to get started</h1>
+            <div class="input-container">
+                <input type="text" id="thumbnailUrl" placeholder="Enter YouTube video link">
+                <input type="text" id="thumbnailNote" placeholder="Add a note (optional)">
+                <button id="addThumbnail">Add Thumbnail</button>
+            </div>
+            <div class="thumbnail-grid" id="thumbnailGrid">
+                <!-- Thumbnails will be dynamically added here -->
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="addBoardModal">
+        <div class="modal-content">
+            <input type="text" id="boardName" placeholder="Enter board name">
+            <button id="createBoard">Create Board</button>
+        </div>
+    </div>
+
+    <div class="modal" id="renameBoardModal">
+        <div class="modal-content">
+            <input type="text" id="newBoardName" placeholder="Enter new board name">
+            <button id="saveBoardName">Save</button>
+        </div>
+    </div>
+
+    <script>
+        let boards = JSON.parse(localStorage.getItem('boards')) || {};
+        let currentBoard = localStorage.getItem('currentBoard') || '';
+        
+        const thumbnailGrid = document.getElementById('thumbnailGrid');
+        const thumbnailUrl = document.getElementById('thumbnailUrl');
+        const thumbnailNote = document.getElementById('thumbnailNote');
+        const addThumbnailButton = document.getElementById('addThumbnail');
+        const toggleSidebarButton = document.querySelector('.toggle-sidebar');
+        const sidebar = document.querySelector('.sidebar');
+        const mainContent = document.querySelector('.main-content');
+        const toggleModeButton = document.querySelector('.toggle-mode');
+        const body = document.body;
+        const addBoardModal = document.getElementById('addBoardModal');
+        const renameBoardModal = document.getElementById('renameBoardModal');
+        const addBoardBtn = document.querySelector('.add-board-btn');
+        const createBoardBtn = document.getElementById('createBoard');
+        const boardNameInput = document.getElementById('boardName');
+        const newBoardNameInput = document.getElementById('newBoardName');
+        const saveBoardNameBtn = document.getElementById('saveBoardName');
+        const boardList = document.getElementById('boardList');
+        let boardToRename = '';
+
+        function saveToLocalStorage() {
+            localStorage.setItem('boards', JSON.stringify(boards));
+            localStorage.setItem('currentBoard', currentBoard);
+        }
+
+        function getYouTubeThumbnail(url) {
+            const videoId = url.match(/(?:https?:\/\/)?(?:www\.)?youtube\.com\/(?:watch\?v=|embed\/|v\/)?([\w-]+)/) ||
+                            url.match(/(?:https?:\/\/)?youtu\.be\/([\w-]+)/);
+            if (videoId && videoId[1]) {
+                return `https://img.youtube.com/vi/${videoId[1]}/maxresdefault.jpg`;
+            }
+            return null;
+        }
+
+        async function addThumbnail() {
+            if (!currentBoard) {
+                alert('Please create and select a board first');
+                return;
+            }
+            
+            const url = thumbnailUrl.value.trim();
+            const note = thumbnailNote.value.trim();
+            const thumbnailUrlFetched = getYouTubeThumbnail(url);
+
+            if (thumbnailUrlFetched) {
+                boards[currentBoard].thumbnails.push({
+                    url: thumbnailUrlFetched,
+                    note: note || 'No notes added'
+                });
+                saveToLocalStorage();
+                renderThumbnails();
+                thumbnailUrl.value = '';
+                thumbnailNote.value = '';
+            } else {
+                alert('Invalid YouTube URL. Please try again.');
+            }
+        }
+
+        function deleteThumbnail(index) {
+            boards[currentBoard].thumbnails.splice(index, 1);
+            saveToLocalStorage();
+            renderThumbnails();
+        }
+
+        function renderThumbnails() {
+            thumbnailGrid.innerHTML = '';
+            if (currentBoard && boards[currentBoard]) {
+                boards[currentBoard].thumbnails.forEach((thumbnail, index) => {
+                    const thumbnailElement = document.createElement('div');
+                    thumbnailElement.className = 'thumbnail';
+                    thumbnailElement.innerHTML = `
+                        <button class="delete-btn" onclick="deleteThumbnail(${index})"><i class="fas fa-trash"></i></button>
+                        <img src="${thumbnail.url}" alt="Thumbnail">
+                        <div class="note-popup">${thumbnail.note}</div>
+                    `;
+                    thumbnailGrid.appendChild(thumbnailElement);
+                });
+            }
+        }
+
+        function deleteBoard(boardId) {
+            if (Object.keys(boards).length > 1) {
+                delete boards[boardId];
+                if (currentBoard === boardId) {
+                    currentBoard = Object.keys(boards)[0];
+                    document.querySelector('h1').textContent = boards[currentBoard].name;
+                }
+                saveToLocalStorage();
+                renderBoards();
+                renderThumbnails();
+            } else {
+                delete boards[boardId];
+                currentBoard = '';
+                document.querySelector('h1').textContent = 'Add a board to get started';
+                saveToLocalStorage();
+                renderBoards();
+                renderThumbnails();
+            }
+        }
+
+        function renameBoard(boardId) {
+            boardToRename = boardId;
+            newBoardNameInput.value = boards[boardId].name;
+            renameBoardModal.style.display = 'flex';
+        }
+
+        function switchBoard(boardId) {
+            currentBoard = boardId;
+            document.querySelector('h1').textContent = boards[boardId].name;
+            saveToLocalStorage();
+            renderThumbnails();
+        }
+
+        function renderBoards() {
+            boardList.innerHTML = '';
+            Object.entries(boards).forEach(([boardId, board]) => {
+                const li = document.createElement('li');
+                li.dataset.boardId = boardId;
+                li.innerHTML = `
+                    <span>${board.name}</span>
+                    <div class="board-actions">
+                        <button onclick="renameBoard('${boardId}')" title="Rename"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteBoard('${boardId}')" title="Delete"><i class="fas fa-trash"></i></button>
+                    </div>
+                `;
+                li.onclick = (e) => {
+                    if (!e.target.closest('.board-actions')) {
+                        switchBoard(boardId);
+                    }
+                };
+                boardList.appendChild(li);
+            });
+        }
+
+        addThumbnailButton.addEventListener('click', addThumbnail);
+
+        toggleSidebarButton.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            mainContent.classList.toggle('full-width');
+        });
+
+        toggleModeButton.addEventListener('click', () => {
+            body.classList.toggle('light-mode');
+            toggleModeButton.textContent = body.classList.contains('light-mode') ? '🌙' : '☀️';
+        });
+
+        addBoardBtn.addEventListener('click', () => {
+            addBoardModal.style.display = 'flex';
+        });
+
+        createBoardBtn.addEventListener('click', () => {
+            const boardName = boardNameInput.value.trim();
+            if (boardName) {
+                const boardId = 'board' + (Object.keys(boards).length + 1);
+                boards[boardId] = {
+                    name: boardName,
+                    thumbnails: []
+                };
+                currentBoard = boardId;
+                document.querySelector('h1').textContent = boardName;
+                saveToLocalStorage();
+                renderBoards();
+                boardNameInput.value = '';
+                addBoardModal.style.display = 'none';
+            }
+        });
+
+        saveBoardNameBtn.addEventListener('click', () => {
+            const newName = newBoardNameInput.value.trim();
+            if (newName) {
+                boards[boardToRename].name = newName;
+                saveToLocalStorage();
+                renderBoards();
+                renameBoardModal.style.display = 'none';
+                if (currentBoard === boardToRename) {
+                    document.querySelector('h1').textContent = newName;
+                }
+            }
+        });
+
+        window.onclick = (event) => {
+            if (event.target === addBoardModal) {
+                addBoardModal.style.display = 'none';
+            }
+            if (event.target === renameBoardModal) {
+                renameBoardModal.style.display = 'none';
+            }
+        };
+
+        // Load initial state
+        if (currentBoard && boards[currentBoard]) {
+            document.querySelector('h1').textContent = boards[currentBoard].name;
+        }
+        renderBoards();
+        renderThumbnails();
+    </script>
+</body>
+</html>
